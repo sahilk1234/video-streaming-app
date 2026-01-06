@@ -1,0 +1,213 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum TitleType {
+  MOVIE
+  SERIES
+}
+
+enum AssetKind {
+  POSTER
+  BACKDROP
+  VIDEO_MP4
+  HLS_MASTER
+  SUBTITLE_VTT
+  THUMBNAIL
+}
+
+enum StorageProvider {
+  LOCAL
+  S3
+}
+
+enum MediaJobStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(USER)
+  profiles     Profile[]
+  createdAt    DateTime  @default(now())
+}
+
+model Profile {
+  id        String          @id @default(cuid())
+  userId    String
+  name      String
+  avatar    String
+  isKids    Boolean         @default(false)
+  user      User            @relation(fields: [userId], references: [id])
+  watchlist Watchlist[]
+  progress  WatchProgress[]
+  createdAt DateTime        @default(now())
+}
+
+model Title {
+  id             String        @id @default(cuid())
+  type           TitleType
+  name           String
+  description    String
+  year           Int
+  runtimeMins    Int?
+  maturityRating String
+  rating         Float         @default(0)
+  posterAssetId  String? @unique
+  backdropAssetId String? @unique
+  videoAssetId   String? @unique
+  subtitleAssetId String? @unique
+  posterAsset    Asset?        @relation("TitlePoster", fields: [posterAssetId], references: [id])
+  backdropAsset  Asset?        @relation("TitleBackdrop", fields: [backdropAssetId], references: [id])
+  videoAsset     Asset?        @relation("TitleVideo", fields: [videoAssetId], references: [id])
+  subtitleAsset  Asset?        @relation("TitleSubtitle", fields: [subtitleAssetId], references: [id])
+  genres         TitleGenre[]
+  people         TitlePerson[]
+  seasons        Season[]
+  jobs           MediaJob[]
+  watchProgress  WatchProgress[]
+  watchlist      Watchlist[]
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Genre {
+  id     String       @id @default(cuid())
+  name   String       @unique
+  titles TitleGenre[]
+}
+
+model TitleGenre {
+  titleId String
+  genreId String
+  title   Title @relation(fields: [titleId], references: [id])
+  genre   Genre @relation(fields: [genreId], references: [id])
+
+  @@id([titleId, genreId])
+}
+
+model Person {
+  id     String        @id @default(cuid())
+  name   String        @unique
+  titles TitlePerson[]
+}
+
+model TitlePerson {
+  titleId  String
+  personId String
+  roleName String
+  title    Title  @relation(fields: [titleId], references: [id])
+  person   Person @relation(fields: [personId], references: [id])
+
+  @@id([titleId, personId, roleName])
+}
+
+model Season {
+  id           String    @id @default(cuid())
+  titleId      String
+  seasonNumber Int
+  name         String
+  title        Title     @relation(fields: [titleId], references: [id])
+  episodes     Episode[]
+}
+
+model Episode {
+  id           String   @id @default(cuid())
+  seasonId     String
+  episodeNumber Int
+  name         String
+  description  String
+  runtimeMins  Int?
+  videoAssetId String? @unique
+  subtitleAssetId String? @unique
+  season       Season   @relation(fields: [seasonId], references: [id])
+  videoAsset   Asset?   @relation("EpisodeVideo", fields: [videoAssetId], references: [id])
+  subtitleAsset Asset?  @relation("EpisodeSubtitle", fields: [subtitleAssetId], references: [id])
+  jobs         MediaJob[]
+  watchProgress WatchProgress[]
+}
+
+model Asset {
+  id        String          @id @default(cuid())
+  kind      AssetKind
+  storage   StorageProvider
+  pathOrUrl String
+  metaJson  Json?
+  createdAt DateTime        @default(now())
+
+  titlePoster   Title?   @relation("TitlePoster")
+  titleBackdrop Title?   @relation("TitleBackdrop")
+  titleVideo    Title?   @relation("TitleVideo")
+  titleSubtitle Title?   @relation("TitleSubtitle")
+  episodeVideo  Episode? @relation("EpisodeVideo")
+  episodeSubtitle Episode? @relation("EpisodeSubtitle")
+  watchProgress WatchProgress[]
+
+  inputJobs   MediaJob[] @relation("MediaJobInput")
+  outputHls   MediaJob[] @relation("MediaJobHls")
+  outputThumb MediaJob[] @relation("MediaJobThumb")
+}
+
+model MediaJob {
+  id                String          @id @default(cuid())
+  titleId           String?
+  episodeId         String?
+  status            MediaJobStatus  @default(QUEUED)
+  inputAssetId      String
+  outputHlsAssetId  String?
+  outputThumbAssetId String?
+  errorMessage      String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  title       Title?   @relation(fields: [titleId], references: [id])
+  episode     Episode? @relation(fields: [episodeId], references: [id])
+  inputAsset  Asset    @relation("MediaJobInput", fields: [inputAssetId], references: [id])
+  outputHls   Asset?   @relation("MediaJobHls", fields: [outputHlsAssetId], references: [id])
+  outputThumb Asset?   @relation("MediaJobThumb", fields: [outputThumbAssetId], references: [id])
+}
+
+model WatchProgress {
+  id              String   @id @default(cuid())
+  profileId       String
+  titleId         String?
+  episodeId       String?
+  assetId         String
+  positionSeconds Int
+  durationSeconds Int
+  updatedAt       DateTime @updatedAt
+
+  profile Profile @relation(fields: [profileId], references: [id])
+  title   Title?  @relation(fields: [titleId], references: [id])
+  episode Episode? @relation(fields: [episodeId], references: [id])
+  asset   Asset   @relation(fields: [assetId], references: [id])
+
+  @@unique([profileId, assetId])
+}
+
+model Watchlist {
+  id        String   @id @default(cuid())
+  profileId String
+  titleId   String
+  createdAt DateTime @default(now())
+
+  profile Profile @relation(fields: [profileId], references: [id])
+  title   Title   @relation(fields: [titleId], references: [id])
+
+  @@unique([profileId, titleId])
+}
