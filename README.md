@@ -1,4 +1,4 @@
-# StreamForge - Netflix-like streaming app
+# Streaming app
 
 A single Next.js App Router project with API route handlers, authentication, profiles, HLS playback, and an admin CMS for uploads.
 
