@@ -1,4 +1,4 @@
-# Streaming app
+# Streamly - Netflix-like streaming app
 
 A single Next.js App Router project with API route handlers, authentication, profiles, HLS playback, and an admin CMS for uploads.
 
@@ -66,6 +66,17 @@ docker compose up --build
 3. For movies: open the title page and upload an MP4 (and optional poster/backdrop/VTT).
 4. For series: create a season + episode, then upload the episode MP4.
 5. Media jobs will show `PROCESSING` until HLS and thumbnail generation completes.
+
+## Download open-source demo videos (optional)
+1. Download curated sample MP4s into local storage:
+   ```bash
+   npm run demo:videos
+   ```
+   This also extracts poster/backdrop JPGs from the videos.
+2. Re-run the seed to attach them:
+   ```bash
+   npm run db:seed
+   ```
 
 ## Storage modes
 - Local (default): files stored under `LOCAL_MEDIA_DIR` and served via `/api/media/*`.

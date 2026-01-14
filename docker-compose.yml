@@ -27,6 +27,7 @@ services:
     depends_on:
       - db
       - minio
+    command: ["npm", "run", "dev"]
     environment:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/streaming
       NEXTAUTH_SECRET: dev-secret
@@ -38,6 +39,8 @@ services:
       S3_SECRET_KEY: minio123
       S3_BUCKET: media
       S3_REGION: us-east-1
+      RUN_DB_SEED: "true"
+      RUN_DEMO_DOWNLOAD: "true"
     ports:
       - "3000:3000"
     volumes:

@@ -103,6 +103,7 @@ export async function processMediaJob(jobId: string) {
         metaJson: {
           variants: [
             { label: "360p", path: `${storageFolder}/360p/index.m3u8` },
+            { label: "480p", path: `${storageFolder}/480p/index.m3u8` },
             { label: "720p", path: `${storageFolder}/720p/index.m3u8` }
           ]
         }

@@ -8,7 +8,7 @@ const manrope = Manrope({ subsets: ["latin"], variable: "--font-body" });
 const bebas = Bebas_Neue({ subsets: ["latin"], weight: "400", variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: "StreamForge",
+  title: "Streamly",
   description: "Netflix-like streaming app built with Next.js"
 };
 

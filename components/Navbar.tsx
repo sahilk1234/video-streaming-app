@@ -21,7 +21,7 @@ export default async function Navbar() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
         <div className="flex items-center gap-8">
           <Link href="/home" className="font-display text-3xl tracking-wide text-accent">
-            StreamForge
+            Streamly
           </Link>
           <div className="hidden items-center gap-6 text-sm text-muted md:flex">
             <Link href="/home" className="hover:text-text">

@@ -1,5 +1,5 @@
 {
-  "name": "video-streaming-app",
+  "name": "streamly",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "prisma": "prisma",
+    "demo:videos": "tsx scripts/download-demo-videos.ts",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
     "postinstall": "prisma generate"

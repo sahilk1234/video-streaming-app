@@ -26,11 +26,23 @@ export default function VideoPlayer({
   episodeId?: string | null;
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
   const [usingFallback, setUsingFallback] = useState(false);
+  const [qualityOptions, setQualityOptions] = useState<Array<{ index: number; label: string }>>([]);
+  const [qualityLevel, setQualityLevel] = useState(-1);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    setUsingFallback(false);
+    setQualityOptions([]);
+    setQualityLevel(-1);
+
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
 
     if (hlsUrl) {
       const canPlay = video.canPlayType("application/vnd.apple.mpegurl");
@@ -41,16 +53,31 @@ export default function VideoPlayer({
 
       if (Hls.isSupported()) {
         const hls = new Hls();
+        hlsRef.current = hls;
         hls.loadSource(hlsUrl);
         hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          const options = hls.levels
+            .map((level, index) => ({ index, height: level.height }))
+            .filter((level) => level.height)
+            .sort((a, b) => b.height - a.height)
+            .map((level) => ({ index: level.index, label: `${level.height}p` }));
+          setQualityOptions(options);
+        });
         hls.on(Hls.Events.ERROR, (_event, data) => {
           if (data.fatal && mp4Url) {
             hls.destroy();
+            hlsRef.current = null;
             video.src = mp4Url;
             setUsingFallback(true);
+            setQualityOptions([]);
+            setQualityLevel(-1);
           }
         });
-        return () => hls.destroy();
+        return () => {
+          hls.destroy();
+          hlsRef.current = null;
+        };
       }
     }
 
@@ -59,6 +86,12 @@ export default function VideoPlayer({
       setUsingFallback(true);
     }
   }, [hlsUrl, mp4Url]);
+
+  useEffect(() => {
+    const hls = hlsRef.current;
+    if (!hls) return;
+    hls.currentLevel = qualityLevel;
+  }, [qualityLevel]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -131,6 +164,23 @@ export default function VideoPlayer({
           />
         )}
       </video>
+      {qualityOptions.length > 0 && (
+        <div className="absolute bottom-4 right-4">
+          <select
+            value={qualityLevel.toString()}
+            onChange={(event) => setQualityLevel(Number.parseInt(event.target.value, 10))}
+            aria-label="Quality"
+            className="rounded-full border border-white/10 bg-black/70 px-3 py-1 text-xs text-white backdrop-blur"
+          >
+            <option value="-1">Auto</option>
+            {qualityOptions.map((option) => (
+              <option key={option.index} value={option.index}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   );
 }

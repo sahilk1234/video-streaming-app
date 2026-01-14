@@ -3,7 +3,7 @@ import { getCurrentProfileId } from "@/lib/profile";
 import { getAssetUrl } from "@/lib/storage";
 import { notFound, redirect } from "next/navigation";
 import VideoPlayer from "@/components/player/VideoPlayer";
-import { Prisma } from "@prisma/client";
+import { AssetKind, Prisma } from "@prisma/client";
 
 type PlayableTitle = Prisma.TitleGetPayload<{ include: { posterAsset: true } }>;
 
@@ -38,8 +38,10 @@ export default async function WatchPage({ params }: { params: { id: string } }) 
     include: { inputAsset: true, outputHls: true }
   });
 
-  const hlsAsset = title?.videoAsset ?? episode?.videoAsset ?? mediaJob?.outputHls ?? null;
-  const mp4Asset = mediaJob?.inputAsset ?? null;
+  const primaryAsset = title?.videoAsset ?? episode?.videoAsset ?? mediaJob?.outputHls ?? null;
+  const isMp4Asset = primaryAsset?.kind === AssetKind.VIDEO_MP4;
+  const hlsAsset = isMp4Asset ? null : primaryAsset;
+  const mp4Asset = (isMp4Asset ? primaryAsset : mediaJob?.inputAsset) ?? null;
   const subtitleAsset = title?.subtitleAsset ?? episode?.subtitleAsset ?? null;
 
   if (!hlsAsset && !mp4Asset) {
