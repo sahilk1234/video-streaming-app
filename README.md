@@ -2,6 +2,9 @@
 
 A single Next.js App Router project with API route handlers, authentication, profiles, HLS playback, and an admin CMS for uploads.
 
+## Live demo
+https://streamly.sahilkhadtare.com
+
 ## Prerequisites
 - Node.js 20+
 - Docker (for Postgres and optional MinIO)
