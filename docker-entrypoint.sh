@@ -33,7 +33,7 @@ fi
 RUN_DEMO_DOWNLOAD=${RUN_DEMO_DOWNLOAD:-false}
 DEMO_MARKER="/app/storage/.demo_downloaded"
 
-if [ "$RUN_DEMO_DOWNLOAD" = "true" ]; then
+# if [ "$RUN_DEMO_DOWNLOAD" = "true" ]; then
   if [ ! -f "$DEMO_MARKER" ]; then
     echo "Downloading demo content..."
     npm run demo:download
@@ -43,9 +43,9 @@ if [ "$RUN_DEMO_DOWNLOAD" = "true" ]; then
   else
     echo "Demo content already downloaded; skipping."
   fi
-else
-  echo "Demo download disabled."
-fi
+# else
+#   echo "Demo download disabled."
+# fi
 
 # -----------------------------
 # Start app
