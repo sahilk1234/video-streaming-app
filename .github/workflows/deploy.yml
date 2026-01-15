@@ -1,4 +1,4 @@
-name: Build (streamly)
+name: Build & Deploy (streamly)
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   packages: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -34,3 +34,22 @@ jobs:
           tags: ghcr.io/sahilk1234/streamly:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # ---------------- CD STEP ----------------
+      - name: Deploy Streamly on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          SSH_KEY:  ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+          ssh -i ~/.ssh/id_ed25519 "$VPS_USER@$VPS_HOST" << 'EOF'
+            cd /srv/stack
+            docker compose pull streamly
+            docker compose up -d streamly streamly_db caddy
+            docker image prune -f
+          EOF
