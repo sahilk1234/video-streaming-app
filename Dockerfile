@@ -13,5 +13,5 @@ RUN chmod +x docker-entrypoint.sh
 RUN npm run build
 
 EXPOSE 3000
-ENTRYPOINT ["./docker-entrypoint.sh"]
+ENTRYPOINT ["sh", "./docker-entrypoint.sh"]
 CMD ["npm", "run", "start"]

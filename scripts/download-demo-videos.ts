@@ -4,6 +4,7 @@ import path from "path";
 import { spawn } from "child_process";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
+import type { ReadableStream as WebReadableStream } from "stream/web";
 
 type VideoSource = {
   id: string;
@@ -96,7 +97,8 @@ async function downloadFile(url: string, outputPath: string) {
     throw new Error(`Failed to download ${url}: ${response.status} ${response.statusText}`);
   }
 
-  await pipeline(Readable.fromWeb(response.body), createWriteStream(outputPath));
+  const body = response.body as unknown as WebReadableStream<Uint8Array>;
+  await pipeline(Readable.fromWeb(body), createWriteStream(outputPath));
 }
 
 async function transcodeShort(inputPath: string, outputPath: string) {
