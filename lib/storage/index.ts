@@ -19,7 +19,27 @@ export type StoredFile = {
 };
 
 function normalizeStorage(value?: string | null): StorageProvider {
-  return value && value.toLowerCase() === "s3" ? "s3" : "local";
+  return value?.toLowerCase() === "s3" ? "s3" : "local";
+}
+
+function hasValidS3Config() {
+  return Boolean(
+    process.env.S3_ENDPOINT &&
+    process.env.S3_BUCKET &&
+    process.env.S3_ACCESS_KEY &&
+    process.env.S3_SECRET_KEY
+  );
+}
+
+export function getStorageProvider(): StorageProvider {
+  const requested = normalizeStorage(process.env.MEDIA_STORAGE);
+
+  if (requested === "s3" && hasValidS3Config()) {
+    return "s3";
+  }
+
+  // HARD FALLBACK
+  return "local";
 }
 
 function getLocalBaseDir() {
@@ -32,8 +52,7 @@ function toPosixPath(value: string) {
 
 function sanitizeFilename(filename: string) {
   const base = path.posix.basename(toPosixPath(filename));
-  const safe = base.replace(/[^a-zA-Z0-9._-]/g, "-");
-  return safe || "file";
+  return base.replace(/[^a-zA-Z0-9._-]/g, "-") || "file";
 }
 
 function buildStoragePath(folder: string, filename: string, relativePath?: string) {
@@ -41,6 +60,7 @@ function buildStoragePath(folder: string, filename: string, relativePath?: strin
   const cleanRelative = relativePath
     ? toPosixPath(relativePath).replace(/^\/+/, "")
     : `${randomUUID()}-${sanitizeFilename(filename)}`;
+
   const joined = path.posix.normalize(path.posix.join(cleanFolder, cleanRelative));
   if (joined.startsWith("..")) {
     throw new Error("Invalid storage path");
@@ -49,40 +69,44 @@ function buildStoragePath(folder: string, filename: string, relativePath?: strin
 }
 
 function looksLikeUrl(value: string) {
-  return /^https?:\/\//.test(value) || value.startsWith("//") || value.startsWith("data:") || value.startsWith("blob:");
-}
-
-export function getStorageProvider(): StorageProvider {
-  return normalizeStorage(process.env.MEDIA_STORAGE);
+  return (
+    /^https?:\/\//.test(value) ||
+    value.startsWith("//") ||
+    value.startsWith("data:") ||
+    value.startsWith("blob:")
+  );
 }
 
 export function getAssetUrl(asset: { pathOrUrl: string; storage?: string | null }) {
-  if (!asset?.pathOrUrl) {
-    return null;
-  }
+  if (!asset?.pathOrUrl) return null;
+
   if (looksLikeUrl(asset.pathOrUrl)) {
     return asset.pathOrUrl;
   }
+
   const storage = normalizeStorage(asset.storage ?? process.env.MEDIA_STORAGE);
   const normalizedPath = asset.pathOrUrl.replace(/^\/+/, "");
-  if (storage === "s3") {
+
+  if (storage === "s3" && hasValidS3Config()) {
     return s3StorageAdapter.getPublicUrl(normalizedPath);
   }
+
   return `/api/media/${normalizedPath}`;
 }
 
 export function getAssetLocalPath(asset: { pathOrUrl: string; storage?: string | null }) {
   const storage = normalizeStorage(asset.storage);
-  if (storage !== "local") {
-    return null;
-  }
+  if (storage !== "local") return null;
+
   const baseDir = getLocalBaseDir();
   const relativePath = asset.pathOrUrl.replace(/^\/+/, "");
   const resolvedPath = path.resolve(baseDir, relativePath);
   const relative = path.relative(baseDir, resolvedPath);
+
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     return null;
   }
+
   return resolvedPath;
 }
 
@@ -97,13 +121,19 @@ export async function saveFile({
   const storedPath = buildStoragePath(folder, filename, relativePath);
 
   if (storage === "s3") {
-    await uploadToS3({ key: storedPath, data, contentType: mimeType });
-    return { storage, path: storedPath };
+    await uploadToS3({
+      key: storedPath,
+      data,
+      contentType: mimeType
+    });
+    return { storage: "s3", path: storedPath };
   }
 
+  // LOCAL STORAGE
   const baseDir = getLocalBaseDir();
   const absolutePath = path.resolve(baseDir, storedPath);
   const relative = path.relative(baseDir, absolutePath);
+
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Invalid storage path");
   }
