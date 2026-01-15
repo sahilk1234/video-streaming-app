@@ -1,7 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
-import { s3StorageAdapter, uploadToS3 } from "@/lib/storage/s3";
+import { s3StorageAdapter, uploadToS3 } from "./s3";
 
 export type StorageProvider = "local" | "s3";
 

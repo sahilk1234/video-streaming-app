@@ -5,6 +5,7 @@ import { spawn } from "child_process";
 import { pipeline } from "stream/promises";
 import { Readable } from "stream";
 import type { ReadableStream as WebReadableStream } from "stream/web";
+import { getStorageProvider, saveFile } from "../lib/storage";
 
 type VideoSource = {
   id: string;
@@ -67,6 +68,12 @@ const force = process.argv.includes("--force");
 const posterSize = { width: 600, height: 900 };
 const backdropSize = { width: 1280, height: 720 };
 const frameTimestampSeconds = 2;
+const storageProvider = getStorageProvider();
+const shouldUploadToS3 = storageProvider === "s3";
+
+function normalizeRelativePath(value: string) {
+  return value.replace(/\\/g, "/").replace(/^\/+/, "");
+}
 
 async function fileExists(filePath: string) {
   try {
@@ -99,6 +106,21 @@ async function downloadFile(url: string, outputPath: string) {
 
   const body = response.body as unknown as WebReadableStream<Uint8Array>;
   await pipeline(Readable.fromWeb(body), createWriteStream(outputPath));
+}
+
+async function uploadToStorage(relativePath: string, absolutePath: string, mimeType: string) {
+  if (!shouldUploadToS3) {
+    return;
+  }
+  const normalized = normalizeRelativePath(relativePath);
+  const data = await fs.readFile(absolutePath);
+  await saveFile({
+    data,
+    filename: path.posix.basename(normalized),
+    mimeType,
+    folder: "",
+    relativePath: normalized
+  });
 }
 
 async function transcodeShort(inputPath: string, outputPath: string) {
@@ -175,7 +197,9 @@ async function main() {
   await fs.mkdir(outputDir, { recursive: true });
 
   for (const source of demoSources) {
-    const targetPath = path.join(outputDir, `open-${source.id}.mp4`);
+    const videoName = `open-${source.id}.mp4`;
+    const targetPath = path.join(outputDir, videoName);
+    const videoRelativePath = path.posix.join("demos", videoName);
     const videoExists = await fileExists(targetPath);
     if (!videoExists || force) {
       const tmpPath = path.join(outputDir, `.download-${source.id}.mp4`);
@@ -186,8 +210,11 @@ async function main() {
     } else {
       console.log(`Using existing video: ${targetPath}`);
     }
+    await uploadToStorage(videoRelativePath, targetPath, "video/mp4");
 
-    const posterPath = path.join(outputDir, `open-poster-${source.id}.jpg`);
+    const posterName = `open-poster-${source.id}.jpg`;
+    const posterPath = path.join(outputDir, posterName);
+    const posterRelativePath = path.posix.join("demos", posterName);
     if (force || !(await fileExists(posterPath))) {
       await extractImage({
         inputPath: targetPath,
@@ -198,8 +225,11 @@ async function main() {
       });
       console.log(`Saved ${posterPath}`);
     }
+    await uploadToStorage(posterRelativePath, posterPath, "image/jpeg");
 
-    const backdropPath = path.join(outputDir, `open-backdrop-${source.id}.jpg`);
+    const backdropName = `open-backdrop-${source.id}.jpg`;
+    const backdropPath = path.join(outputDir, backdropName);
+    const backdropRelativePath = path.posix.join("demos", backdropName);
     if (force || !(await fileExists(backdropPath))) {
       await extractImage({
         inputPath: targetPath,
@@ -210,6 +240,7 @@ async function main() {
       });
       console.log(`Saved ${backdropPath}`);
     }
+    await uploadToStorage(backdropRelativePath, backdropPath, "image/jpeg");
   }
 }
 

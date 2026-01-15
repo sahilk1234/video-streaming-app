@@ -3,8 +3,10 @@ import bcrypt from "bcrypt";
 import { spawn } from "child_process";
 import fs from "fs/promises";
 import path from "path";
+import { getStorageProvider as getConfiguredStorage, saveFile } from "../lib/storage";
 
 const prisma = new PrismaClient();
+const configuredStorage = getConfiguredStorage();
 
 const demoVideoSources = [
   "testsrc=size=640x360:rate=24",
@@ -66,6 +68,34 @@ async function runFfmpeg(args: string[]) {
       }
     });
   });
+}
+
+function normalizeRelativePath(value: string) {
+  return value.replace(/\\/g, "/").replace(/^\/+/, "");
+}
+
+function mapStorageProvider(storage: string): StorageProvider {
+  return storage === "s3" ? StorageProvider.S3 : StorageProvider.LOCAL;
+}
+
+async function storeDemoAsset(relativePath: string, mimeType: string) {
+  const normalized = normalizeRelativePath(relativePath);
+  if (configuredStorage !== "s3") {
+    return { path: normalized, storage: StorageProvider.LOCAL };
+  }
+
+  const baseDir = process.env.LOCAL_MEDIA_DIR || "./storage";
+  const absolutePath = path.resolve(baseDir, normalized);
+  const data = await fs.readFile(absolutePath);
+  const stored = await saveFile({
+    data,
+    filename: path.posix.basename(normalized),
+    mimeType,
+    folder: "",
+    relativePath: normalized
+  });
+
+  return { path: stored.path, storage: mapStorageProvider(stored.storage) };
 }
 
 async function ensureDummyVideos(count: number) {
@@ -429,11 +459,12 @@ async function main() {
   for (const title of titlesNeedingVideo) {
     const videoPath = demoVideoPaths[videoIndex % demoVideoPaths.length];
     videoIndex += 1;
+    const stored = await storeDemoAsset(videoPath, "video/mp4");
     const asset = await prisma.asset.create({
       data: {
         kind: AssetKind.VIDEO_MP4,
-        storage: StorageProvider.LOCAL,
-        pathOrUrl: videoPath
+        storage: stored.storage,
+        pathOrUrl: stored.path
       }
     });
 
@@ -452,11 +483,12 @@ async function main() {
   for (const title of titlesNeedingPoster) {
     const posterPath = demoPosterPaths[posterIndex % demoPosterPaths.length];
     posterIndex += 1;
+    const stored = await storeDemoAsset(posterPath, "image/jpeg");
     const asset = await prisma.asset.create({
       data: {
         kind: AssetKind.POSTER,
-        storage: StorageProvider.LOCAL,
-        pathOrUrl: posterPath
+        storage: stored.storage,
+        pathOrUrl: stored.path
       }
     });
 
@@ -475,11 +507,12 @@ async function main() {
   for (const title of titlesNeedingBackdrop) {
     const backdropPath = demoBackdropPaths[backdropIndex % demoBackdropPaths.length];
     backdropIndex += 1;
+    const stored = await storeDemoAsset(backdropPath, "image/jpeg");
     const asset = await prisma.asset.create({
       data: {
         kind: AssetKind.BACKDROP,
-        storage: StorageProvider.LOCAL,
-        pathOrUrl: backdropPath
+        storage: stored.storage,
+        pathOrUrl: stored.path
       }
     });
 
@@ -498,11 +531,12 @@ async function main() {
   for (const title of titlesNeedingSubtitle) {
     const subtitlePath = demoSubtitlePaths[subtitleIndex % demoSubtitlePaths.length];
     subtitleIndex += 1;
+    const stored = await storeDemoAsset(subtitlePath, "text/vtt");
     const asset = await prisma.asset.create({
       data: {
         kind: AssetKind.SUBTITLE_VTT,
-        storage: StorageProvider.LOCAL,
-        pathOrUrl: subtitlePath
+        storage: stored.storage,
+        pathOrUrl: stored.path
       }
     });
 
@@ -525,11 +559,12 @@ async function main() {
   for (const episode of episodesToSeed) {
     const videoPath = demoVideoPaths[videoIndex % demoVideoPaths.length];
     videoIndex += 1;
+    const stored = await storeDemoAsset(videoPath, "video/mp4");
     const asset = await prisma.asset.create({
       data: {
         kind: AssetKind.VIDEO_MP4,
-        storage: StorageProvider.LOCAL,
-        pathOrUrl: videoPath
+        storage: stored.storage,
+        pathOrUrl: stored.path
       }
     });
 
@@ -549,11 +584,12 @@ async function main() {
   for (const episode of episodesNeedingSubtitle) {
     const subtitlePath = demoSubtitlePaths[subtitleIndex % demoSubtitlePaths.length];
     subtitleIndex += 1;
+    const stored = await storeDemoAsset(subtitlePath, "text/vtt");
     const asset = await prisma.asset.create({
       data: {
         kind: AssetKind.SUBTITLE_VTT,
-        storage: StorageProvider.LOCAL,
-        pathOrUrl: subtitlePath
+        storage: stored.storage,
+        pathOrUrl: stored.path
       }
     });
 
