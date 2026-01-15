@@ -36,7 +36,7 @@ DEMO_MARKER="/app/storage/.demo_downloaded"
 # if [ "$RUN_DEMO_DOWNLOAD" = "true" ]; then
   if [ ! -f "$DEMO_MARKER" ]; then
     echo "Downloading demo content..."
-    npm run demo:download
+    npm run demo:videos
     mkdir -p "$(dirname "$DEMO_MARKER")"
     touch "$DEMO_MARKER"
     echo "Demo download completed."
