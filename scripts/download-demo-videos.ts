@@ -68,8 +68,14 @@ const force = process.argv.includes("--force");
 const posterSize = { width: 600, height: 900 };
 const backdropSize = { width: 1280, height: 720 };
 const frameTimestampSeconds = 2;
-const storageProvider = getStorageProvider();
-const shouldUploadToS3 = storageProvider === "s3";
+const allowS3Upload = process.env.DEMO_UPLOAD_TO_S3 === "true";
+
+function shouldUploadToS3() {
+  if (!allowS3Upload) {
+    return false;
+  }
+  return getStorageProvider() === "s3";
+}
 
 function normalizeRelativePath(value: string) {
   return value.replace(/\\/g, "/").replace(/^\/+/, "");
@@ -109,7 +115,7 @@ async function downloadFile(url: string, outputPath: string) {
 }
 
 async function uploadToStorage(relativePath: string, absolutePath: string, mimeType: string) {
-  if (!shouldUploadToS3) {
+  if (!shouldUploadToS3()) {
     return;
   }
   const normalized = normalizeRelativePath(relativePath);
