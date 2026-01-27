@@ -9,21 +9,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
-  streamly_minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: minio123
-    volumes:
-      - minio_data:/data
-
   streamly:
     image: ghcr.io/sahilk1234/streamly:latest
     restart: unless-stopped
     depends_on:
       - streamly_db
-      - streamly_minio
     environment:
       DATABASE_URL: postgresql://postgres:postgres@streamly_db:5432/streaming
       NEXTAUTH_SECRET: prod-secret
@@ -42,4 +32,3 @@ services:
 
 volumes:
   postgres_data:
-  minio_data:
