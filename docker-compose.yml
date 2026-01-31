@@ -9,21 +9,60 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  minio_init:
+    image: minio/mc:latest
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD; do
+        echo 'waiting for minio...'; sleep 1;
+      done;
+      mc mb -p local/media || true;
+      mc anonymous set download local/media || true;
+      "
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+
   streamly:
-    image: ghcr.io/sahilk1234/streamly:latest
+    build: .
+    image: streamly-local
     restart: unless-stopped
     depends_on:
       - streamly_db
+      - minio
+      - minio_init
     environment:
       DATABASE_URL: postgresql://postgres:postgres@streamly_db:5432/streaming
       NEXTAUTH_SECRET: prod-secret
       NEXTAUTH_URL: https://streamly.sahilkhadtare.com
 
-      MEDIA_STORAGE: local
+      MEDIA_STORAGE: s3
       LOCAL_MEDIA_DIR: /app/storage
+      S3_ENDPOINT: http://minio:9000
+      S3_PUBLIC_ENDPOINT: http://localhost:9000
+      S3_BUCKET: media
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_REGION: us-east-1
 
       RUN_DB_SEED: "true"
       RUN_DEMO_DOWNLOAD: "true"
+      DEMO_UPLOAD_TO_S3: "true"
 
     ports:
       - "3000:3000"
@@ -32,3 +71,4 @@ services:
 
 volumes:
   postgres_data:
+  minio_data:

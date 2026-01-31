@@ -44,7 +44,11 @@ S3_REGION="us-east-1"
    ```bash
    npm install
    ```
-3. Run migrations and seed:
+3. (Optional) Download demo media (seed no longer generates dummy assets):
+   ```bash
+   npm run demo:videos
+   ```
+4. Run migrations and seed:
    ```bash
    npm run db:migrate
    npm run db:seed
@@ -58,6 +62,7 @@ S3_REGION="us-east-1"
 ```bash
 docker compose up --build
 ```
+The compose stack includes MinIO for S3-compatible storage at `http://localhost:9001` (user/pass: `minioadmin`).
 
 ## Seeded users
 - Admin: `admin@example.com` / `Admin@12345`
@@ -76,14 +81,16 @@ docker compose up --build
    npm run demo:videos
    ```
    This also extracts poster/backdrop JPGs from the videos.
-2. Re-run the seed to attach them:
+   If you're using S3/MinIO, set `DEMO_UPLOAD_TO_S3=true` and the S3 env vars so uploads go to the bucket.
+2. Run (or re-run) the seed to attach them:
    ```bash
    npm run db:seed
    ```
 
 ## Storage modes
 - Local (default): files stored under `LOCAL_MEDIA_DIR` and served via `/api/media/*`.
-- S3/MinIO: set `MEDIA_STORAGE=s3` and fill S3 env vars. Ensure the bucket exists (create `media` in MinIO).
+- S3/MinIO: set `MEDIA_STORAGE=s3` and fill S3 env vars. Ensure the bucket exists (create `media` in MinIO) and is publicly readable for direct playback URLs.
+  - If your app runs in Docker and MinIO is only reachable on the Docker network, set `S3_PUBLIC_ENDPOINT` to a host-accessible URL (e.g. `http://localhost:9000`) so browsers can load media.
 
 ## Useful commands
 ```bash

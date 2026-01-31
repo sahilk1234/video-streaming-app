@@ -88,6 +88,10 @@ export function getAssetUrl(asset: { pathOrUrl: string; storage?: string | null 
   const normalizedPath = asset.pathOrUrl.replace(/^\/+/, "");
 
   if (storage === "s3" && hasValidS3Config()) {
+    // Client components don't have access to server env vars for S3 URLs.
+    if (typeof window !== "undefined") {
+      return `/api/media/${normalizedPath}`;
+    }
     return s3StorageAdapter.getPublicUrl(normalizedPath);
   }
 

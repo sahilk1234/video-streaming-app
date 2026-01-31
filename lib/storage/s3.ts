@@ -59,7 +59,7 @@ function joinUrlPath(basePath: string, suffix: string) {
 function getPublicUrl(key: string) {
   const bucket = getBucket();
   const normalizedKey = normalizeKey(key);
-  const endpoint = process.env.S3_ENDPOINT;
+  const endpoint = process.env.S3_PUBLIC_ENDPOINT || process.env.S3_ENDPOINT;
 
   if (endpoint) {
     const url = new URL(endpoint);
